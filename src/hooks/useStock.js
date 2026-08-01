@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   fetchQuote,
-  fetchCandles,
-  fetchProfile,
+  fetchHistory,
   searchStocks,
-} from '../api/finnhub';
+} from '../api/yahoo';
 
 // ============================================================
-// Price history (chart data) — Finnhub Candles
+// Price history (chart data) — Yahoo Finance History
 // ============================================================
 export function usePriceHistory(symbol, range = '1mo') {
   const [data, setData] = useState([]);
@@ -15,26 +14,18 @@ export function usePriceHistory(symbol, range = '1mo') {
   const [error, setError] = useState(null);
   const [attempt, setAttempt] = useState(0);
 
-  const daysMap = { '5d': 7, '1mo': 30, '3mo': 90, '6mo': 180, '1y': 365, '5y': 365 * 5 };
-  const resolutionMap = { '5d': '5', '1mo': 'D', '3mo': 'D', '6mo': 'D', '1y': 'W', '5y': 'W' };
-
   useEffect(() => {
     if (!symbol) return;
-    const days = daysMap[range] ?? 30;
-    const resolution = resolutionMap[range] ?? 'D';
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    const now = Math.floor(Date.now() / 1000);
-    const from = now - (days + 5) * 24 * 60 * 60; // Add buffer to ensure we get enough data
-
-    fetchCandles(symbol, resolution, from, now)
+    fetchHistory(symbol, range)
       .then(d => {
         if (!cancelled) setData(d);
       })
       .catch((err) => {
-        console.error('Candle fetch error:', err);
+        console.error('History fetch error:', err);
         if (!cancelled) setError('Could not load price history.');
       })
       .finally(() => {
@@ -49,7 +40,7 @@ export function usePriceHistory(symbol, range = '1mo') {
 }
 
 // ============================================================
-// Stock quote — Finnhub Quote
+// Stock quote — Yahoo Quote
 // ============================================================
 export function useStockQuote(symbol) {
   const [quote, setQuote] = useState(null);
@@ -76,7 +67,7 @@ export function useStockQuote(symbol) {
 }
 
 // ============================================================
-// Company overview — Finnhub Profile
+// Company overview — Yahoo Quote (includes company info)
 // ============================================================
 export function useStockOverview(symbol) {
   const [overview, setOverview] = useState(null);
@@ -90,7 +81,7 @@ export function useStockOverview(symbol) {
     setLoading(true);
     setError(null);
 
-    fetchProfile(symbol)
+    fetchQuote(symbol)
       .then(d => { if (!cancelled) setOverview(d); })
       .catch(() => { if (!cancelled) setError('Could not load company overview.'); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -103,8 +94,7 @@ export function useStockOverview(symbol) {
 }
 
 // ============================================================
-// Technical indicator — Finnhub Technical Analysis (Premium)
-// Note: Technical indicators require premium subscription
+// Technical indicator — Calculated from Yahoo History
 // ============================================================
 export function useTechnicalIndicator(symbol, indicatorType = 'sma', params = {}) {
   const [data, setData] = useState([]);
@@ -114,18 +104,15 @@ export function useTechnicalIndicator(symbol, indicatorType = 'sma', params = {}
 
   useEffect(() => {
     if (!symbol) return;
-    // Finnhub technical indicators require premium subscription
-    // For now, we'll calculate simple indicators from candle data
     let cancelled = false;
     setLoading(true);
     setError(null);
 
     // Calculate simple moving average from price history
     const period = params.period ?? 20;
-    const now = Math.floor(Date.now() / 1000);
-    const from = now - (period + 50) * 24 * 60 * 60; // Add more buffer
+    const range = '1y'; // Get enough data for calculation
 
-    fetchCandles(symbol, 'D', from, now)
+    fetchHistory(symbol, range)
       .then(candles => {
         if (!cancelled && candles.length >= period) {
           const smaData = [];
@@ -133,7 +120,6 @@ export function useTechnicalIndicator(symbol, indicatorType = 'sma', params = {}
             const sum = candles.slice(i - period + 1, i + 1).reduce((acc, c) => acc + c.close, 0);
             smaData.push({
               time: candles[i].time,
-              date: candles[i].date,
               value: sum / period,
             });
           }
@@ -156,7 +142,7 @@ export function useTechnicalIndicator(symbol, indicatorType = 'sma', params = {}
 }
 
 // ============================================================
-// Search — Finnhub Search
+// Search — Yahoo Search
 // ============================================================
 export function useStockSearch() {
   const [results, setResults] = useState([]);
