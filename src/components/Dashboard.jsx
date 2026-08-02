@@ -12,6 +12,7 @@ import WelcomeHero from './WelcomeHero';
 import Toasts from './Toasts';
 import MarketStrip from './MarketStrip';
 import TradingData from './TradingData';
+import IndianStockIndices from './IndianStockIndices';
 import { usePriceHistory } from '../hooks/useStock';
 import { IoRefresh, IoTrendingUp, IoTrendingDown, IoStar, IoPricetag, IoNotifications, IoHome } from 'react-icons/io5';
 
@@ -108,6 +109,8 @@ export default function Dashboard() {
                 <TradingData data={selectedData} symbol={selectedStock} />
               </div>
             )}
+
+            {mobileTab === 'home' && <IndianStockIndices />}
 
             {mobileTab === 'home' && <StockChart symbol={selectedStock} />}
 
